@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream> 
+#include <cmath> // Đã có
 
 // CLO1: Hàm khởi tạo
 GameManager::GameManager()
@@ -15,6 +16,7 @@ GameManager::GameManager()
     , mTimeSinceLastSpawn(sf::Time::Zero)
     , mRoadSpeed(300.f) 
     , mRoadPadding(124.f) // Giá trị mặc định
+    , mNextLevelScore(10) // Mốc điểm đầu tiên là 10
 {
     // CLO4: Đọc file config
     loadConfig("config.ini"); 
@@ -39,7 +41,7 @@ GameManager::GameManager()
     resetGame();
 }
 
-// CLO4: Đọc file cấu hình (config.ini)
+// *** HÀM ĐÃ SỬA: Lưu tốc độ GỐC ***
 void GameManager::loadConfig(const std::string& filename)
 {
     std::ifstream file(filename);
@@ -59,44 +61,57 @@ void GameManager::loadConfig(const std::string& filename)
         std::stringstream ss(line);
         std::string key;
         float value;
-        std::string s_value; // Dùng để đọc string (file name)
+        std::string s_value; 
 
         if (std::getline(ss, key, '='))
         {
-            // Thử đọc string trước
             if (key == "road_texture_file")
             {
                 std::getline(ss, mRoadTextureFile);
             }
-            // Nếu không phải, thử đọc số
             else if (ss >> value) 
             {
                 if (key == "width") mWindowWidth = static_cast<int>(value);
                 else if (key == "height") mWindowHeight = static_cast<int>(value);
-                else if (key == "enemy_speed_min") mEnemySpeedMin = value;
-                else if (key == "enemy_speed_max") mEnemySpeedMax = value;
-                else if (key == "spawn_interval") mSpawnInterval = value;
-                else if (key == "road_speed") mRoadSpeed = value; 
                 else if (key == "road_padding") mRoadPadding = value;
+
+                // *** THAY ĐỔI: Lưu tốc độ vào cả biến GỐC và biến HIỆN TẠI ***
+                else if (key == "road_speed") 
+                { 
+                    mBaseRoadSpeed = value; 
+                    mRoadSpeed = value; 
+                }
+                else if (key == "enemy_speed_min") 
+                { 
+                    mBaseEnemySpeedMin = value; 
+                    mEnemySpeedMin = value; 
+                }
+                else if (key == "enemy_speed_max") 
+                { 
+                    mBaseEnemySpeedMax = value; 
+                    mEnemySpeedMax = value; 
+                }
+                else if (key == "spawn_interval") 
+                { 
+                    mBaseSpawnInterval = value; 
+                    mSpawnInterval = value; 
+                }
             }
         }
     }
     file.close();
 }
 
-// Tải tài nguyên
+// ... (Hàm loadResources giữ nguyên) ...
 void GameManager::loadResources()
 {
-    // ... (Code load "arial.ttf" giữ nguyên) ...
     if (!mFont.loadFromFile("arial.ttf"))
     {
         throw std::runtime_error("CLO4 Exception: Font file not found (arial.ttf)");
     }
     
-    // Tải texture player
     mPlayer.initTexture("player_car.png"); 
 
-    // Load nhiều ảnh enemy vào vector
     sf::Texture tex1;
     if (!tex1.loadFromFile("enemy_car_1.png"))
     {
@@ -110,7 +125,6 @@ void GameManager::loadResources()
     }
     mEnemyTextures.push_back(tex2); 
     
-    // Tải ảnh đường cuộn
     if (mRoadTextureFile.empty())
     {
         throw std::runtime_error("CLO4 Exception: road_texture_file not specified in config.ini");
@@ -120,36 +134,31 @@ void GameManager::loadResources()
         throw std::runtime_error("CLO4 Exception: File Not Found: " + mRoadTextureFile);
     }
     
-    // ... (Code load "mBackgroundMusic") ...
     if (!mBackgroundMusic.openFromFile("background_music.ogg"))
     {
         throw std::runtime_error("CLO4 Exception: File Not Found: background_music.ogg");
     }
     mBackgroundMusic.setLoop(true); 
     mBackgroundMusic.setVolume(50); 
-    mBackgroundMusic.play(); // Chạy nhạc lần đầu
+    mBackgroundMusic.play();        
 }
 
-// *** HÀM ĐÃ SỬA HOÀN TOÀN ***
+// ... (Hàm setupRoad giữ nguyên) ...
 void GameManager::setupRoad()
 {
-    // Tính toán tỷ lệ scale để ảnh VỪA KHÍT chiều rộng cửa sổ
-    float scaleX = (float)mWindowWidth / mRoadTexture.getSize().x; // (800 / 840)
-
-    // Lấy chiều cao của texture (sau khi đã scale)
-    float roadTextureHeight = mRoadTexture.getSize().y * scaleX; // (650 * (800/840)) = 619px
+    float scaleX = (float)mWindowWidth / mRoadTexture.getSize().x; 
+    float roadTextureHeight = mRoadTexture.getSize().y * scaleX; 
 
     mRoadSprite1.setTexture(mRoadTexture);
-    mRoadSprite1.setPosition(0.f, 0.f); // Bắt đầu từ (0,0)
+    mRoadSprite1.setPosition(0.f, 0.f); 
     mRoadSprite1.setScale(scaleX, scaleX); 
 
     mRoadSprite2.setTexture(mRoadTexture);
-    // Đặt sprite 2 ngay trên sprite 1
     mRoadSprite2.setPosition(0.f, -roadTextureHeight); 
     mRoadSprite2.setScale(scaleX, scaleX); 
 }
 
-// HÀM NÀY PHẢI TỒN TẠI
+// ... (Hàm setupTexts giữ nguyên) ...
 void GameManager::setupTexts()
 {
     mScoreText.setFont(mFont);
@@ -168,28 +177,33 @@ void GameManager::setupTexts()
     mGameOverText.setPosition(mWindowWidth / 2.0f, mWindowHeight / 2.0f);
 }
 
-// *** HÀM ĐÃ SỬA ***
+// *** HÀM ĐÃ SỬA: Reset tốc độ về GỐC ***
 void GameManager::resetGame()
 {
     mIsPlaying = true;
     mScore = 0;
     mScoreText.setString("Score: 0");
     mTimeSinceLastSpawn = sf::Time::Zero;
-    mEnemies.clear(); // CLO3: Xóa vector
+    mEnemies.clear(); 
 
-    // Đặt player ở giữa đường đua (dựa trên padding)
     float playerStartX = mRoadPadding + ((mWindowWidth - mRoadPadding * 2) / 2.f);
     mPlayer.setPosition(playerStartX, mWindowHeight - mPlayer.getGlobalBounds().height);
 
-    // *** THÊM DÒNG NÀY: Chơi lại nhạc ***
+    // *** THÊM ĐOẠN NÀY: Reset tốc độ và độ khó ***
+    mRoadSpeed = mBaseRoadSpeed;
+    mEnemySpeedMin = mBaseEnemySpeedMin;
+    mEnemySpeedMax = mBaseEnemySpeedMax;
+    mSpawnInterval = mBaseSpawnInterval;
+    mNextLevelScore = 10; // Đặt lại mốc điểm
+    // ------------------------------------
+
     mBackgroundMusic.play(); 
 }
 
-// HÀM NÀY PHẢI TỒN TẠI
+// ... (Hàm run giữ nguyên) ...
 void GameManager::run()
 {
     sf::Clock clock;
-    // Đây là Game Loop chính
     while (mWindow.isOpen())
     {
         sf::Time dt = clock.restart();
@@ -202,7 +216,7 @@ void GameManager::run()
     }
 }
 
-// CLO1: Xử lý sự kiện
+// ... (Hàm processEvents giữ nguyên) ...
 void GameManager::processEvents()
 {
     sf::Event event;
@@ -211,7 +225,6 @@ void GameManager::processEvents()
         if (event.type == sf::Event::Closed)
             mWindow.close();
 
-        // Xử lý restart game
         if (!mIsPlaying && event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter)
         {
             resetGame();
@@ -219,53 +232,67 @@ void GameManager::processEvents()
     }
 }
 
-// *** HÀM ĐÃ SỬA (FIX LỖI KHOẢNG HỞ) ***
+
+// *** HÀM ĐÃ SỬA: Thêm logic tăng độ khó ***
 void GameManager::update(sf::Time dt)
 {
-    // Cập nhật đường cuộn (máy chạy bộ)
+    // ... (Code cuộn đường (mRoadSprite1, mRoadSprite2) giữ nguyên) ...
     float roadTextureHeight = mRoadTexture.getSize().y * mRoadSprite1.getScale().y;
-    
     mRoadSprite1.move(0, mRoadSpeed * dt.asSeconds());
     mRoadSprite2.move(0, mRoadSpeed * dt.asSeconds());
-
-    // Nếu sprite 1 ra khỏi màn hình, đưa nó lên trên sprite 2
     if (mRoadSprite1.getPosition().y > mWindowHeight)
     {
         mRoadSprite1.setPosition(0.f, mRoadSprite2.getPosition().y - roadTextureHeight);
     }
-    // Nếu sprite 2 ra khỏi màn hình, đưa nó lên trên sprite 1
     if (mRoadSprite2.getPosition().y > mWindowHeight)
     {
         mRoadSprite2.setPosition(0.f, mRoadSprite1.getPosition().y - roadTextureHeight);
     }
-    // --------------------------------------------------
-
-    // Cập nhật Player và giữ player trong lề đường
+    
+    // ... (Code cập nhật Player và giữ player trong lề giữ nguyên) ...
     mPlayer.update(dt);
     sf::Vector2f playerPos = mPlayer.getPosition();
     float playerHalfWidth = mPlayer.getGlobalBounds().width / 2.f;
-    
-    // Giới hạn dựa trên padding (lề đường trong ảnh)
     float leftLimit = mRoadPadding + playerHalfWidth; 
     float rightLimit = mWindowWidth - mRoadPadding - playerHalfWidth;
     if (playerPos.x < leftLimit) mPlayer.setPosition(leftLimit, playerPos.y);
     if (playerPos.x > rightLimit) mPlayer.setPosition(rightLimit, playerPos.y);
 
-
-    // ... (Code spawn enemy và cập nhật enemy giữ nguyên) ...
+    // ... (Code cập nhật mTimeSinceLastSpawn và gọi spawnEnemy() giữ nguyên) ...
     mTimeSinceLastSpawn += dt;
     if (mTimeSinceLastSpawn.asSeconds() > mSpawnInterval)
     {
         spawnEnemy();
         mTimeSinceLastSpawn = sf::Time::Zero;
     }
+
+    // Cập nhật enemies
     for (auto it = mEnemies.begin(); it != mEnemies.end(); )
     {
         it->update(dt);
         if (it->getPosition().y > mWindowHeight + it->getGlobalBounds().height)
         {
             it = mEnemies.erase(it); 
-            mScore++; 
+            mScore++; // Tăng điểm
+            
+            // *** THÊM ĐOẠN NÀY: Kiểm tra tăng độ khó ***
+            if (mScore >= mNextLevelScore)
+            {
+                // Tăng tốc độ (ví dụ: tăng 10%)
+                mRoadSpeed *= 1.1f;
+                mEnemySpeedMin *= 1.1f;
+                mEnemySpeedMax *= 1.1f;
+
+                // Giảm thời gian spawn (nhanh hơn 5%, đặt giới hạn 0.4s)
+                if (mSpawnInterval > 0.4f)
+                {
+                    mSpawnInterval *= 0.95f; 
+                }
+
+                // Đặt mốc điểm tiếp theo
+                mNextLevelScore += 10; // Cứ mỗi 10 điểm
+            }
+            // -----------------------------------------
         }
         else
         {
@@ -279,18 +306,14 @@ void GameManager::update(sf::Time dt)
     checkCollisions();
 }
 
-// *** HÀM ĐÃ SỬA (VẼ ĐƯỜNG CUỘN) ***
+// ... (Hàm render giữ nguyên) ...
 void GameManager::render()
 {
-    // Clear màn hình
     mWindow.clear(sf::Color::Black); 
     
-    // Vẽ 2 sprite đường cuộn
     mWindow.draw(mRoadSprite1);
     mWindow.draw(mRoadSprite2);
-    // ------------------------------------
     
-    // Vẽ xe và text
     mPlayer.draw(mWindow);
     for (auto& enemy : mEnemies)
     {
@@ -305,44 +328,45 @@ void GameManager::render()
     mWindow.display();
 }
 
-// *** HÀM ĐÃ SỬA (NGĂN ĐÈ NHAU) ***
+// ... (Hàm spawnEnemy giữ nguyên) ...
 void GameManager::spawnEnemy()
 {
-    // Fix: Kiểm tra xem có xe nào còn ở quá gần đỉnh không
-    for (const auto& enemy : mEnemies)
-    {
-        if (enemy.getPosition().y < 150.f)
-        {
-            return; // BỎ QUA, không spawn
-        }
-    }
-    
     float speed = mEnemySpeedMin + (rand() % static_cast<int>(mEnemySpeedMax - mEnemySpeedMin + 1));
     
-    // Chọn ngẫu nhiên 1 texture từ vector
     if (mEnemyTextures.empty()) return; 
     int textureIndex = rand() % mEnemyTextures.size(); 
-    mEnemies.emplace_back(speed, mEnemyTextures[textureIndex]); 
     
-    Enemy& newEnemy = mEnemies.back();
-    float enemyHalfWidth = newEnemy.getGlobalBounds().width / 2.f;
+    float refEnemyWidth = mEnemyTextures[textureIndex].getSize().x;
+    float refEnemyHalfWidth = refEnemyWidth / 2.f;
 
-    // Tính toán spawn (dựa trên padding)
-    int spawnableWidth = (mWindowWidth - mRoadPadding * 2) - static_cast<int>(enemyHalfWidth * 2);
-
+    int spawnableWidth = (mWindowWidth - mRoadPadding * 2) - static_cast<int>(refEnemyWidth);
+    float xPos;
     if (spawnableWidth <= 0) 
     {
-        float xPos = mRoadPadding + ((mWindowWidth - mRoadPadding * 2) / 2.f);
-        newEnemy.setPosition(xPos, -100.f);
+        xPos = mRoadPadding + ((mWindowWidth - mRoadPadding * 2) / 2.f);
     }
     else
     {
-        float xPos = static_cast<float>(rand() % spawnableWidth) + mRoadPadding + enemyHalfWidth;
-        newEnemy.setPosition(xPos, -100.f); 
+        xPos = static_cast<float>(rand() % spawnableWidth) + mRoadPadding + refEnemyHalfWidth;
     }
+
+    for (const auto& enemy : mEnemies)
+    {
+        if (enemy.getPosition().y < (refEnemyWidth * 3.f))
+        {
+            if (std::abs(enemy.getPosition().x - xPos) < (refEnemyWidth * 1.5f))
+            {
+                return; 
+            }
+        }
+    }
+
+    mEnemies.emplace_back(speed, mEnemyTextures[textureIndex]); 
+    Enemy& newEnemy = mEnemies.back();
+    newEnemy.setPosition(xPos, -100.f); 
 }
 
-// *** HÀM ĐÃ SỬA ***
+// ... (Hàm checkCollisions giữ nguyên) ...
 void GameManager::checkCollisions()
 {
     sf::FloatRect playerBounds = mPlayer.getGlobalBounds();
@@ -366,14 +390,10 @@ void GameManager::checkCollisions()
             enemyBounds.height - (paddingY * 2)
         );
 
-        // Kiểm tra va chạm bằng hitbox
         if (playerHitbox.intersects(enemyHitbox))
         {
             mIsPlaying = false; // Game over
-            
-            // *** THÊM DÒNG NÀY: Dừng nhạc ***
             mBackgroundMusic.stop(); 
-            
             mScoreboard.insert({mScore, "Player"}); 
             saveScoreboard(); 
             break;
@@ -381,8 +401,7 @@ void GameManager::checkCollisions()
     }
 }
 
-
-// CLO4: Đọc/Lưu file scoreboard
+// ... (Hàm loadScoreboard, saveScoreboard giữ nguyên) ...
 void GameManager::loadScoreboard()
 {
     std::ifstream file("scoreboard.txt");
