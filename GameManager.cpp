@@ -16,7 +16,7 @@ GameManager::GameManager()
     , mRoadSpeed(300.f) 
     , mRoadPadding(124.f) // Giá trị mặc định
     , mNextLevelScore(10) // Mốc điểm đầu tiên là 10
-    , mCurrentState(GameState::MainMenu) // *** SỬA: Bắt đầu ở MainMenu ***
+    , mCurrentState(GameState::MainMenu) // *** Bắt đầu ở MainMenu ***
 {
     // CLO4: Đọc file config
     loadConfig("config.ini"); 
@@ -38,8 +38,6 @@ GameManager::GameManager()
     
     // CLO4: Đọc file điểm
     loadScoreboard(); 
-
-    // *** BỎ: resetGame(); (Không bắt đầu game ngay) ***
 }
 
 // ... (Hàm loadConfig giữ nguyên) ...
@@ -198,7 +196,6 @@ void GameManager::setupTexts()
 // *** HÀM ĐÃ SỬA: Chuyển trạng thái sang Playing ***
 void GameManager::resetGame()
 {
-    // *** THAY ĐỔI: mIsPlaying = true -> mCurrentState = GameState::Playing ***
     mCurrentState = GameState::Playing; 
 
     mScore = 0;
@@ -216,8 +213,8 @@ void GameManager::resetGame()
     mSpawnInterval = mBaseSpawnInterval;
     mNextLevelScore = 10; 
 
-    // Nhạc đã chạy từ menu, không cần play() lại
-    // mBackgroundMusic.play(); 
+    // *** SỬA LỖI: PHÁT LẠI NHẠC KHI CHƠI LẠI ***
+    mBackgroundMusic.play(); 
 }
 
 // *** HÀM ĐÃ SỬA: Chỉ update khi đang Playing ***
@@ -230,7 +227,7 @@ void GameManager::run()
         sf::Time dt = clock.restart();
         processEvents(); // Luôn xử lý sự kiện
 
-        // *** THAY ĐỔI: Chỉ update khi ĐANG CHƠI ***
+        // Chỉ update khi ĐANG CHƠI
         if (mCurrentState == GameState::Playing)
         {
             update(dt);
@@ -252,7 +249,7 @@ void GameManager::processEvents()
         // Xử lý restart game
         if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter)
         {
-            // *** THAY ĐỔI: Bắt đầu game hoặc Restart game ***
+            // Bắt đầu game hoặc Restart game
             if (mCurrentState == GameState::MainMenu || mCurrentState == GameState::GameOver)
             {
                 resetGame();
@@ -261,7 +258,7 @@ void GameManager::processEvents()
     }
 }
 
-// ... (Hàm update giữ nguyên, vì nó chỉ được gọi khi đang Playing) ...
+// ... (Hàm update giữ nguyên) ...
 void GameManager::update(sf::Time dt)
 {
     // Cập nhật đường cuộn (máy chạy bộ)
@@ -439,7 +436,6 @@ void GameManager::checkCollisions()
 
         if (playerHitbox.intersects(enemyHitbox))
         {
-            // *** THAY ĐỔI: mIsPlaying = false -> mCurrentState = GameState::GameOver ***
             mCurrentState = GameState::GameOver;
             
             mBackgroundMusic.stop(); 
