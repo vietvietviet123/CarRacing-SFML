@@ -1,0 +1,35 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build CarRacing",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-g",
+                "main.cpp",
+                "Car.cpp",
+                "Player.cpp",
+                "Enemy.cpp",
+                "GameManager.cpp",
+                "-o",
+                "CarRacing",
+                "-I",
+                "C:\\SFML-2.6.1\\include",
+                "-L",
+                "C:\\SFML-2.6.1\\lib",
+                "-lsfml-graphics-d",
+                "-lsfml-window-d",
+                "-lsfml-system-d",
+                "-lsfml-audio-d"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}
