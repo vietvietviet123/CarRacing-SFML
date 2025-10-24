@@ -9,6 +9,15 @@
 #include <string>
 #include <memory>
 
+// *** THÊM: Tạo các trạng thái cho game ***
+enum class GameState
+{
+    MainMenu,
+    Playing,
+    GameOver
+};
+
+
 class GameManager
 {
 public:
@@ -26,7 +35,6 @@ private:
     void loadResources();
     void setupTexts();
     
-    // Hàm cài đặt (setupRoad sẽ bị thay đổi nhiều)
     void setupRoad(); 
 
     // Các hàm xử lý logic game
@@ -44,48 +52,48 @@ private:
     Player mPlayer;
     sf::Music mBackgroundMusic; // Nhạc nền
 
-    // *** BIẾN MỚI CHO ĐƯỜNG CUỘN ***
+    // Biến cho đường cuộn
     sf::Texture mRoadTexture;
     sf::Sprite mRoadSprite1;
     sf::Sprite mRoadSprite2;
     std::string mRoadTextureFile;
-    // ------------------------------------
-
-    float mRoadPadding; // Vẫn giữ lại để tính toán
+    
+    float mRoadPadding; 
 
     // Vector chứa nhiều texture enemy
     std::vector<sf::Texture> mEnemyTextures; 
-
-    // CLO3: Sử dụng std::vector để quản lý danh sách đối thủ
     std::vector<Enemy> mEnemies; 
-
-    // CLO3: Sử dụng std::map để quản lý điểm số
     std::multimap<int, std::string, std::greater<int>> mScoreboard; 
 
-    float mRoadSpeed; // Tốc độ đường (sẽ tăng dần)                          
+    float mRoadSpeed;                          
 
     // Biến quản lý game
     sf::Font mFont;
     sf::Text mScoreText;
     sf::Text mGameOverText;
-    bool mIsPlaying;
+    
+    // *** THÊM CÁC BIẾN NÀY CHO MENU ***
+    sf::Text mTitleText;
+    sf::Text mMenuText;
+    
+    // *** BỎ: bool mIsPlaying; ***
+    // *** THAY BẰNG: ***
+    GameState mCurrentState; // Biến trạng thái mới
+
     int mScore;
 
-    // Các biến đọc từ file config (tốc độ hiện tại)
+    // ... (các biến config và tốc độ khác giữ nguyên) ...
     int mWindowWidth;
     int mWindowHeight;
-    float mEnemySpeedMin; // Tốc độ min (sẽ tăng dần)
-    float mEnemySpeedMax; // Tốc độ max (sẽ tăng dần)
-    float mSpawnInterval; // Thời gian spawn (sẽ giảm dần)
+    float mEnemySpeedMin; 
+    float mEnemySpeedMax; 
+    float mSpawnInterval; 
     sf::Time mTimeSinceLastSpawn;
 
-    // *** THÊM CÁC BIẾN NÀY VÀO ***
-    // BiBiến lưu tốc độ GỐC (để reset)
     float mBaseRoadSpeed;
     float mBaseEnemySpeedMin;
     float mBaseEnemySpeedMax;
     float mBaseSpawnInterval;
     
-    // Biến quản lý độ khó
-    int mNextLevelScore; // Mốc điểm để tăng độ khó
+    int mNextLevelScore; 
 };
