@@ -5,18 +5,18 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream> 
-#include <cmath> // Đã có
+#include <cmath> 
 
 // CLO1: Hàm khởi tạo
 GameManager::GameManager()
     : mWindow()
     , mPlayer(400.f) // Tốc độ player
-    , mIsPlaying(false)
     , mScore(0)
     , mTimeSinceLastSpawn(sf::Time::Zero)
     , mRoadSpeed(300.f) 
     , mRoadPadding(124.f) // Giá trị mặc định
     , mNextLevelScore(10) // Mốc điểm đầu tiên là 10
+    , mCurrentState(GameState::MainMenu) // *** SỬA: Bắt đầu ở MainMenu ***
 {
     // CLO4: Đọc file config
     loadConfig("config.ini"); 
@@ -33,15 +33,16 @@ GameManager::GameManager()
     // Tạo đường đua
     setupRoad(); 
 
+    // Cài đặt text
     setupTexts();
     
     // CLO4: Đọc file điểm
     loadScoreboard(); 
 
-    resetGame();
+    // *** BỎ: resetGame(); (Không bắt đầu game ngay) ***
 }
 
-// *** HÀM ĐÃ SỬA: Lưu tốc độ GỐC ***
+// ... (Hàm loadConfig giữ nguyên) ...
 void GameManager::loadConfig(const std::string& filename)
 {
     std::ifstream file(filename);
@@ -74,8 +75,6 @@ void GameManager::loadConfig(const std::string& filename)
                 if (key == "width") mWindowWidth = static_cast<int>(value);
                 else if (key == "height") mWindowHeight = static_cast<int>(value);
                 else if (key == "road_padding") mRoadPadding = value;
-
-                // *** THAY ĐỔI: Lưu tốc độ vào cả biến GỐC và biến HIỆN TẠI ***
                 else if (key == "road_speed") 
                 { 
                     mBaseRoadSpeed = value; 
@@ -102,7 +101,7 @@ void GameManager::loadConfig(const std::string& filename)
     file.close();
 }
 
-// ... (Hàm loadResources giữ nguyên) ...
+// ... (Hàm loadResources giữ nguyên, nhạc vẫn chạy ở menu) ...
 void GameManager::loadResources()
 {
     if (!mFont.loadFromFile("arial.ttf"))
@@ -140,7 +139,7 @@ void GameManager::loadResources()
     }
     mBackgroundMusic.setLoop(true); 
     mBackgroundMusic.setVolume(50); 
-    mBackgroundMusic.play();        
+    mBackgroundMusic.play(); // Nhạc chạy từ menu      
 }
 
 // ... (Hàm setupRoad giữ nguyên) ...
@@ -158,29 +157,50 @@ void GameManager::setupRoad()
     mRoadSprite2.setScale(scaleX, scaleX); 
 }
 
-// ... (Hàm setupTexts giữ nguyên) ...
+// *** HÀM ĐÃ SỬA: Thêm Text cho Menu ***
 void GameManager::setupTexts()
 {
+    // Text Điểm
     mScoreText.setFont(mFont);
     mScoreText.setCharacterSize(24);
     mScoreText.setFillColor(sf::Color::White);
     mScoreText.setPosition(10.f, 10.f);
 
+    // Text Game Over
     mGameOverText.setFont(mFont);
     mGameOverText.setCharacterSize(40);
     mGameOverText.setFillColor(sf::Color::Red);
     mGameOverText.setString("GAME OVER!\nPress Enter to Restart");
-    
-    sf::FloatRect textRect = mGameOverText.getLocalBounds();
-    mGameOverText.setOrigin(textRect.left + textRect.width / 2.0f,
-                            textRect.top + textRect.height / 2.0f);
+    sf::FloatRect goRect = mGameOverText.getLocalBounds();
+    mGameOverText.setOrigin(goRect.left + goRect.width / 2.0f, goRect.top + goRect.height / 2.0f);
     mGameOverText.setPosition(mWindowWidth / 2.0f, mWindowHeight / 2.0f);
+
+    // *** THÊM TEXT MENU ***
+    // Text Tiêu đề
+    mTitleText.setFont(mFont);
+    mTitleText.setCharacterSize(60);
+    mTitleText.setFillColor(sf::Color::White);
+    mTitleText.setString("CAR RACING");
+    sf::FloatRect titleRect = mTitleText.getLocalBounds();
+    mTitleText.setOrigin(titleRect.left + titleRect.width / 2.0f, titleRect.top + titleRect.height / 2.0f);
+    mTitleText.setPosition(mWindowWidth / 2.0f, mWindowHeight / 2.0f - 100.f); // Đặt ở trên
+
+    // Text Hướng dẫn
+    mMenuText.setFont(mFont);
+    mMenuText.setCharacterSize(30);
+    mMenuText.setFillColor(sf::Color::White);
+    mMenuText.setString("Press Enter to Start");
+    sf::FloatRect menuRect = mMenuText.getLocalBounds();
+    mMenuText.setOrigin(menuRect.left + menuRect.width / 2.0f, menuRect.top + menuRect.height / 2.0f);
+    mMenuText.setPosition(mWindowWidth / 2.0f, mWindowHeight / 2.0f + 50.f); // Đặt ở dưới
 }
 
-// *** HÀM ĐÃ SỬA: Reset tốc độ về GỐC ***
+// *** HÀM ĐÃ SỬA: Chuyển trạng thái sang Playing ***
 void GameManager::resetGame()
 {
-    mIsPlaying = true;
+    // *** THAY ĐỔI: mIsPlaying = true -> mCurrentState = GameState::Playing ***
+    mCurrentState = GameState::Playing; 
+
     mScore = 0;
     mScoreText.setString("Score: 0");
     mTimeSinceLastSpawn = sf::Time::Zero;
@@ -189,34 +209,38 @@ void GameManager::resetGame()
     float playerStartX = mRoadPadding + ((mWindowWidth - mRoadPadding * 2) / 2.f);
     mPlayer.setPosition(playerStartX, mWindowHeight - mPlayer.getGlobalBounds().height);
 
-    // *** THÊM ĐOẠN NÀY: Reset tốc độ và độ khó ***
+    // Reset tốc độ và độ khó
     mRoadSpeed = mBaseRoadSpeed;
     mEnemySpeedMin = mBaseEnemySpeedMin;
     mEnemySpeedMax = mBaseEnemySpeedMax;
     mSpawnInterval = mBaseSpawnInterval;
-    mNextLevelScore = 10; // Đặt lại mốc điểm
-    // ------------------------------------
+    mNextLevelScore = 10; 
 
-    mBackgroundMusic.play(); 
+    // Nhạc đã chạy từ menu, không cần play() lại
+    // mBackgroundMusic.play(); 
 }
 
-// ... (Hàm run giữ nguyên) ...
+// *** HÀM ĐÃ SỬA: Chỉ update khi đang Playing ***
 void GameManager::run()
 {
     sf::Clock clock;
+    // Đây là Game Loop chính
     while (mWindow.isOpen())
     {
         sf::Time dt = clock.restart();
-        processEvents();
-        if (mIsPlaying)
+        processEvents(); // Luôn xử lý sự kiện
+
+        // *** THAY ĐỔI: Chỉ update khi ĐANG CHƠI ***
+        if (mCurrentState == GameState::Playing)
         {
             update(dt);
         }
-        render();
+        
+        render(); // Luôn vẽ
     }
 }
 
-// ... (Hàm processEvents giữ nguyên) ...
+// *** HÀM ĐÃ SỬA: Xử lý phím Enter cho từng trạng thái ***
 void GameManager::processEvents()
 {
     sf::Event event;
@@ -225,21 +249,27 @@ void GameManager::processEvents()
         if (event.type == sf::Event::Closed)
             mWindow.close();
 
-        if (!mIsPlaying && event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter)
+        // Xử lý restart game
+        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter)
         {
-            resetGame();
+            // *** THAY ĐỔI: Bắt đầu game hoặc Restart game ***
+            if (mCurrentState == GameState::MainMenu || mCurrentState == GameState::GameOver)
+            {
+                resetGame();
+            }
         }
     }
 }
 
-
-// *** HÀM ĐÃ SỬA: Thêm logic tăng độ khó ***
+// ... (Hàm update giữ nguyên, vì nó chỉ được gọi khi đang Playing) ...
 void GameManager::update(sf::Time dt)
 {
-    // ... (Code cuộn đường (mRoadSprite1, mRoadSprite2) giữ nguyên) ...
+    // Cập nhật đường cuộn (máy chạy bộ)
     float roadTextureHeight = mRoadTexture.getSize().y * mRoadSprite1.getScale().y;
+    
     mRoadSprite1.move(0, mRoadSpeed * dt.asSeconds());
     mRoadSprite2.move(0, mRoadSpeed * dt.asSeconds());
+
     if (mRoadSprite1.getPosition().y > mWindowHeight)
     {
         mRoadSprite1.setPosition(0.f, mRoadSprite2.getPosition().y - roadTextureHeight);
@@ -249,16 +279,17 @@ void GameManager::update(sf::Time dt)
         mRoadSprite2.setPosition(0.f, mRoadSprite1.getPosition().y - roadTextureHeight);
     }
     
-    // ... (Code cập nhật Player và giữ player trong lề giữ nguyên) ...
+    // Cập nhật Player và giữ player trong lề đường
     mPlayer.update(dt);
     sf::Vector2f playerPos = mPlayer.getPosition();
     float playerHalfWidth = mPlayer.getGlobalBounds().width / 2.f;
+    
     float leftLimit = mRoadPadding + playerHalfWidth; 
     float rightLimit = mWindowWidth - mRoadPadding - playerHalfWidth;
     if (playerPos.x < leftLimit) mPlayer.setPosition(leftLimit, playerPos.y);
     if (playerPos.x > rightLimit) mPlayer.setPosition(rightLimit, playerPos.y);
 
-    // ... (Code cập nhật mTimeSinceLastSpawn và gọi spawnEnemy() giữ nguyên) ...
+    // Cập nhật thời gian spawn
     mTimeSinceLastSpawn += dt;
     if (mTimeSinceLastSpawn.asSeconds() > mSpawnInterval)
     {
@@ -275,24 +306,18 @@ void GameManager::update(sf::Time dt)
             it = mEnemies.erase(it); 
             mScore++; // Tăng điểm
             
-            // *** THÊM ĐOẠN NÀY: Kiểm tra tăng độ khó ***
+            // Kiểm tra tăng độ khó
             if (mScore >= mNextLevelScore)
             {
-                // Tăng tốc độ (ví dụ: tăng 10%)
                 mRoadSpeed *= 1.1f;
                 mEnemySpeedMin *= 1.1f;
                 mEnemySpeedMax *= 1.1f;
-
-                // Giảm thời gian spawn (nhanh hơn 5%, đặt giới hạn 0.4s)
                 if (mSpawnInterval > 0.4f)
                 {
                     mSpawnInterval *= 0.95f; 
                 }
-
-                // Đặt mốc điểm tiếp theo
-                mNextLevelScore += 10; // Cứ mỗi 10 điểm
+                mNextLevelScore += 10; 
             }
-            // -----------------------------------------
         }
         else
         {
@@ -306,22 +331,41 @@ void GameManager::update(sf::Time dt)
     checkCollisions();
 }
 
-// ... (Hàm render giữ nguyên) ...
+// *** HÀM ĐÃ SỬA: Vẽ dựa trên trạng thái (State) ***
 void GameManager::render()
 {
     mWindow.clear(sf::Color::Black); 
     
+    // 1. Luôn vẽ đường cuộn (làm nền cho mọi trạng thái)
     mWindow.draw(mRoadSprite1);
     mWindow.draw(mRoadSprite2);
     
-    mPlayer.draw(mWindow);
-    for (auto& enemy : mEnemies)
+    // 2. Vẽ các đối tượng dựa trên trạng thái
+    if (mCurrentState == GameState::Playing)
     {
-        enemy.draw(mWindow);
+        mPlayer.draw(mWindow);
+        for (auto& enemy : mEnemies)
+        {
+            enemy.draw(mWindow);
+        }
+        mWindow.draw(mScoreText);
     }
-    mWindow.draw(mScoreText);
-    if (!mIsPlaying)
+    else if (mCurrentState == GameState::MainMenu)
     {
+        // Vẽ Menu
+        mWindow.draw(mTitleText);
+        mWindow.draw(mMenuText);
+    }
+    else if (mCurrentState == GameState::GameOver)
+    {
+        // Vẽ xe (vị trí lúc thua)
+        mPlayer.draw(mWindow);
+        for (auto& enemy : mEnemies)
+        {
+            enemy.draw(mWindow);
+        }
+        // Vẽ điểm và chữ Game Over
+        mWindow.draw(mScoreText);
         mWindow.draw(mGameOverText);
     }
 
@@ -352,9 +396,12 @@ void GameManager::spawnEnemy()
 
     for (const auto& enemy : mEnemies)
     {
-        if (enemy.getPosition().y < (refEnemyWidth * 3.f))
+        float safeDistanceY = refEnemyWidth * 2.0f; 
+        float safeDistanceX = refEnemyWidth * 1.5f; 
+
+        if (enemy.getPosition().y < safeDistanceY)
         {
-            if (std::abs(enemy.getPosition().x - xPos) < (refEnemyWidth * 1.5f))
+            if (std::abs(enemy.getPosition().x - xPos) < safeDistanceX)
             {
                 return; 
             }
@@ -366,7 +413,7 @@ void GameManager::spawnEnemy()
     newEnemy.setPosition(xPos, -100.f); 
 }
 
-// ... (Hàm checkCollisions giữ nguyên) ...
+// *** HÀM ĐÃ SỬA: Chuyển sang trạng thái GameOver ***
 void GameManager::checkCollisions()
 {
     sf::FloatRect playerBounds = mPlayer.getGlobalBounds();
@@ -377,7 +424,7 @@ void GameManager::checkCollisions()
         playerBounds.left + paddingX,
         playerBounds.top + paddingY,
         playerBounds.width - (paddingX * 2),
-        playerBounds.height - (paddingY * 2)
+        playerBounds.height - (paddingX * 2)
     );
     
     for (const auto& enemy : mEnemies)
@@ -387,13 +434,16 @@ void GameManager::checkCollisions()
             enemyBounds.left + paddingX,
             enemyBounds.top + paddingY,
             enemyBounds.width - (paddingX * 2),
-            enemyBounds.height - (paddingY * 2)
+            enemyBounds.height - (paddingX * 2)
         );
 
         if (playerHitbox.intersects(enemyHitbox))
         {
-            mIsPlaying = false; // Game over
+            // *** THAY ĐỔI: mIsPlaying = false -> mCurrentState = GameState::GameOver ***
+            mCurrentState = GameState::GameOver;
+            
             mBackgroundMusic.stop(); 
+            
             mScoreboard.insert({mScore, "Player"}); 
             saveScoreboard(); 
             break;
