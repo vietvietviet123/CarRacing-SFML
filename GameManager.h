@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
-#include <SFML/Audio.hpp>   // Đã có từ trước
+#include <SFML/Audio.hpp>   
 #include "Player.h"
 #include "Enemy.h"
 #include <vector>       
@@ -62,21 +62,30 @@ private:
     // CLO3: Sử dụng std::map để quản lý điểm số
     std::multimap<int, std::string, std::greater<int>> mScoreboard; 
 
-    float mRoadSpeed;                           
+    float mRoadSpeed; // Tốc độ đường (sẽ tăng dần)                          
 
     // Biến quản lý game
     sf::Font mFont;
     sf::Text mScoreText;
     sf::Text mGameOverText;
-
     bool mIsPlaying;
     int mScore;
 
-    // Các biến đọc từ file config (CLO4)
+    // Các biến đọc từ file config (tốc độ hiện tại)
     int mWindowWidth;
     int mWindowHeight;
-    float mEnemySpeedMin;
-    float mEnemySpeedMax;
-    float mSpawnInterval;
+    float mEnemySpeedMin; // Tốc độ min (sẽ tăng dần)
+    float mEnemySpeedMax; // Tốc độ max (sẽ tăng dần)
+    float mSpawnInterval; // Thời gian spawn (sẽ giảm dần)
     sf::Time mTimeSinceLastSpawn;
+
+    // *** THÊM CÁC BIẾN NÀY VÀO ***
+    // BiBiến lưu tốc độ GỐC (để reset)
+    float mBaseRoadSpeed;
+    float mBaseEnemySpeedMin;
+    float mBaseEnemySpeedMax;
+    float mBaseSpawnInterval;
+    
+    // Biến quản lý độ khó
+    int mNextLevelScore; // Mốc điểm để tăng độ khó
 };
